@@ -3,7 +3,8 @@ package types
 type Address struct {
 	Id         int64
 	Address    string
-	Types      string // 0 新账户 1 已购买1类产品账户  2 已购买2类产品账户
+	Nft        string // 0 未购买 1 已购买
+	Tb         string // 0 未购买 1 已购买
 	UpdateTime string
 }
 type Txs struct {

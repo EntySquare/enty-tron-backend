@@ -26,6 +26,12 @@ func Setup(
 			return insertTransaction(req, accountDB)
 		}),
 	).Methods(http.MethodPost, http.MethodOptions)
+
+	r0mux.Handle("/tron/address/queryCoinLimit",
+		httputil.MakeExternalAPI("queryCoinLimit", func(req *http.Request) util.JSONResponse {
+			return queryCoinLimit(req, accountDB)
+		}),
+	).Methods(http.MethodPost, http.MethodOptions)
 	//r0mux.Handle("/user/userInfo",
 	//	httputil.MakeAuthAPI("userInfo", accountDB, func(req *http.Request, account *types.Account) util.JSONResponse {
 	//		return userInfo(req, accountDB, account)

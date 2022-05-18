@@ -25,9 +25,10 @@ func insertTransaction(
 			JSON: jsonerror.NotFound("io can not been read successfully"),
 		}
 	}
-	reqParams := TransactionInsertReq{}
+	reqParams := &TransactionInsertReq{}
 	err = json.Unmarshal(reqBody, reqParams)
 	if err != nil {
+		println(err)
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.Unknown("Transaction unmarshal error"),
@@ -51,7 +52,11 @@ func insertTransaction(
 			if err != nil {
 				return err
 			}
-			addr.Types = reqParams.TransactionType
+			if reqParams.TransactionType == "1" {
+				addr.Tb = "1"
+			} else if reqParams.TransactionType == "2" {
+				addr.Nft = "1"
+			}
 			err = db.UpdateAddressById(ctx, txn, *addr)
 			if err != nil {
 				return err
@@ -59,7 +64,12 @@ func insertTransaction(
 		}
 		return nil
 	})
-
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("db select or insert err"),
+		}
+	}
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: TransactionInsertResp{
