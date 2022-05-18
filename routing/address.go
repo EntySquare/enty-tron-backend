@@ -8,6 +8,7 @@ import (
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
 	"entysquare/enty-tron-backend/storage/types"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -35,7 +36,7 @@ func checkAddress(
 	}
 	address := reqParams.Address
 	resp := CheckAddressResp{
-		RetCode:  "1",
+		RetCode:  "0",
 		TbLimit:  "0",
 		NftLimit: "0",
 	}
@@ -100,6 +101,73 @@ func queryCoinLimit(
 			RetCode:        "0",
 			TbHasBeenSold:  tb,
 			NftHasBeenSold: nft,
+		},
+	}
+}
+func confirmLimit(req *http.Request, db *storage.Database,
+) util.JSONResponse {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
+	bodyIo := req.Body
+	ctx := req.Context()
+	reqBody, err := ioutil.ReadAll(bodyIo)
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("io can not been read successfully"),
+		}
+	}
+	reqParams := &ConfirmLimitReq{}
+	err = json.Unmarshal(reqBody, reqParams)
+	if err != nil {
+		println(err)
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Transaction unmarshal error"),
+		}
+	}
+	address := reqParams.Address
+	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		tb, nft, err := db.SelectAllSold(ctx, txn)
+		if err != nil {
+			return err
+		}
+		if reqParams.TransactionType == "1" && tb == tbLimit {
+			return fmt.Errorf("over limit")
+		}
+		if reqParams.TransactionType == "2" && nft == nftLimit {
+			return fmt.Errorf("over limit")
+		}
+		addr, err := db.SelectAddressByAddress(ctx, nil, address)
+		if err != nil {
+			return err
+		}
+		if addr == nil {
+			return fmt.Errorf("address not exist")
+		} else {
+			if reqParams.TransactionType == "1" {
+				addr.Tb = "1"
+			} else if reqParams.TransactionType == "2" {
+				addr.Nft = "1"
+			}
+			err = db.UpdateAddressById(ctx, txn, *addr)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("update address error"),
+		}
+	}
+	return util.JSONResponse{
+		Code: http.StatusOK,
+		JSON: ConfirmLimitResp{
+			RetCode: "0",
+			Message: "",
 		},
 	}
 }

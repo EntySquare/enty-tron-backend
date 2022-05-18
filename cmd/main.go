@@ -1,6 +1,8 @@
 package main
 
 import (
+	"entysquare/enty-tron-backend/conf"
+	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/routing"
 	"entysquare/enty-tron-backend/storage"
 	"github.com/gorilla/mux"
@@ -10,7 +12,7 @@ import (
 func main() {
 	// check duplicated process
 	//pid.PassOrPanic()
-	//conf := new(conf.Conf).GetConf()
+	conf := new(conf.Conf).GetConf()
 	db, err := storage.NewDatabase()
 	if err != nil {
 		print("db err:", err)
@@ -23,5 +25,14 @@ func main() {
 	err = http.ListenAndServe("0.0.0.0:9000", routers)
 	if err != nil {
 		panic("error")
+	}
+	th, err := tron.Build(db)
+	if err != nil {
+		print("kafka msg err:", err)
+	}
+	go tron.ScanTron(conf, db)
+	err = th.Run()
+	if err != nil {
+		panic(err)
 	}
 }

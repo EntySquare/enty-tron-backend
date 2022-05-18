@@ -11,11 +11,22 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"sync"
 )
+
+var resourceLock = func() sync.Mutex {
+	return sync.Mutex{}
+}()
+
+const tbLimit = 200
+const nftLimit = 200
 
 func insertTransaction(
 	req *http.Request, db *storage.Database,
 ) util.JSONResponse {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
 	bodyIo := req.Body
 	ctx := req.Context()
 	reqBody, err := ioutil.ReadAll(bodyIo)
@@ -36,6 +47,16 @@ func insertTransaction(
 	}
 	address := reqParams.Address
 	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		tb, nft, err := db.SelectAllSold(ctx, txn)
+		if err != nil {
+			return err
+		}
+		if reqParams.TransactionType == "1" && tb == tbLimit {
+			return fmt.Errorf("over limit")
+		}
+		if reqParams.TransactionType == "2" && nft == nftLimit {
+			return fmt.Errorf("over limit")
+		}
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
 		if err != nil {
 			return err
@@ -52,24 +73,24 @@ func insertTransaction(
 			if err != nil {
 				return err
 			}
-			if reqParams.TransactionType == "1" {
-				addr.Tb = "1"
-			} else if reqParams.TransactionType == "2" {
-				addr.Nft = "1"
-			}
-			err = db.UpdateAddressById(ctx, txn, *addr)
-			if err != nil {
-				return err
-			}
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "over limit") {
+		return util.JSONResponse{
+			Code: http.StatusOK,
+			JSON: TransactionInsertResp{
+				RetCode: "1",
+				Message: "over limit",
+			},
+		}
+	} else if err != nil && !strings.Contains(err.Error(), "over limit") {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
+
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: TransactionInsertResp{
