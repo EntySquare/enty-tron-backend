@@ -81,7 +81,7 @@ func (d *Database) UpdateTxs(ctx context.Context, txn *sql.Tx, b types.Txs) (err
 func (d *Database) SelectTxs(ctx context.Context, txn *sql.Tx, hash string) (result *types.Txs, err error) {
 	return d.txs.selectTxs(ctx, txn, hash)
 }
-func (d *Database) SelectCollectTxs(ctx context.Context, txn *sql.Tx, chain string) (result int64, err error) {
+func (d *Database) SelectCollectTxs(ctx context.Context, txn *sql.Tx) (result int64, err error) {
 	return d.txs.selectCollectTxs(ctx, txn)
 }
 func (d *Database) UpdateTxsByHash(ctx context.Context, txn *sql.Tx, b types.Txs) (err error) {
@@ -89,4 +89,8 @@ func (d *Database) UpdateTxsByHash(ctx context.Context, txn *sql.Tx, b types.Txs
 }
 func (d *Database) SelectAllSold(ctx context.Context, txn *sql.Tx) (tb int64, nft int64, err error) {
 	return d.add.selectAllSold(ctx, txn)
+}
+
+func (d *Database) ListTxsByStatus(ctx context.Context, txn *sql.Tx) (maps map[string]types.Txs, err error) {
+	return d.txs.listTxsStatus(ctx, txn)
 }

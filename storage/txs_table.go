@@ -27,6 +27,7 @@ type txsSta struct {
 	updateTxsStmt        *sql.Stmt
 	updateTxsByHashStmt  *sql.Stmt
 	selectTxsStmt        *sql.Stmt
+	listTxsByStatusStmt  *sql.Stmt
 	selectCollectTxsStmt *sql.Stmt
 }
 
@@ -38,6 +39,8 @@ const updateTxsSQL = "" +
 	" id = $5  "
 const selectTxsSQL = "" +
 	"SELECT id,hash,status,address,insert_time FROM txs where hash = $1  "
+const listTxsByStatusSQL = "" +
+	"SELECT id,hash,status,address,insert_time FROM txs where status = '0'  "
 const selectCollectTxsSQL = "" +
 	"SELECT count(1) FROM txs where address = $1 and status = '0'"
 const updateTxsByHashSQL = "" +
@@ -61,6 +64,9 @@ func (s *txsSta) prepare(db *sql.DB) (err error) {
 		return
 	}
 	if s.selectTxsStmt, err = db.Prepare(selectTxsSQL); err != nil {
+		return
+	}
+	if s.listTxsByStatusStmt, err = db.Prepare(listTxsByStatusSQL); err != nil {
 		return
 	}
 	if s.selectCollectTxsStmt, err = db.Prepare(selectCollectTxsSQL); err != nil {
@@ -135,7 +141,7 @@ func (s *txsSta) selectCollectTxs(
 	var b int64
 	for rows.Next() {
 		if err = rows.Scan(
-			b,
+			&b,
 		); err != nil {
 			return 0, err
 		}
@@ -160,4 +166,28 @@ func (s *txsSta) updateTxsByHash(ctx context.Context, txn *sql.Tx, b types.Txs) 
 		return fmt.Errorf("updateTxs insertBalance i==0")
 	}
 	return nil
+}
+func (s *txsSta) listTxsStatus(
+	ctx context.Context, txn *sql.Tx,
+) (map[string]types.Txs, error) {
+	rows, err := sqlutil.TxStmt(txn, s.listTxsByStatusStmt).QueryContext(ctx)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	maps := make(map[string]types.Txs)
+	for rows.Next() {
+		var b types.Txs
+		if err = rows.Scan(
+			&b.Id,
+			&b.Hash,
+			&b.Status,
+			&b.Address,
+			&b.InsertTime,
+		); err != nil {
+			return nil, err
+		}
+		maps[*b.Hash] = b
+	}
+	return maps, rows.Err()
 }
