@@ -1,12 +1,12 @@
 package routing
 
 type CheckAddressReq struct {
-	Address         string `json:"address"`
-	TransactionType string `json:"transactionType"` //交易类型，tb coin 1，nft 2
+	Address string `json:"address"`
 }
 type CheckAddressResp struct {
-	RetCode string `json:"retCode"`
-	Message string `json:"message"`
+	RetCode  string `json:"retCode"`
+	TbLimit  string `json:"tbLimit"`
+	NftLimit string `json:"nftLimit"`
 }
 type TransactionInsertReq struct {
 	TransactionId   string `json:"transactionId"`

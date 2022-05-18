@@ -8,10 +8,8 @@ import (
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
 	"entysquare/enty-tron-backend/storage/types"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 func checkAddress(
@@ -36,6 +34,11 @@ func checkAddress(
 		}
 	}
 	address := reqParams.Address
+	resp := CheckAddressResp{
+		RetCode:  "1",
+		TbLimit:  "0",
+		NftLimit: "0",
+	}
 	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
 		if err != nil {
@@ -52,35 +55,24 @@ func checkAddress(
 				return err
 			}
 		} else {
-			if reqParams.TransactionType == "1" && addr.Tb == "1" {
-				return fmt.Errorf("tb coin over limit")
-			} else if reqParams.TransactionType == "2" && addr.Nft == "1" {
-				return fmt.Errorf("nft over limit")
+			if addr.Tb == "1" {
+				resp.TbLimit = "1"
+			} else if addr.Nft == "1" {
+				resp.NftLimit = "1"
 			}
 		}
 		return nil
 	})
-	if err != nil && !strings.Contains(err.Error(), "over limit") {
+	if err != nil {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
-		}
-	} else if err != nil && strings.Contains(err.Error(), "over limit") {
-		return util.JSONResponse{
-			Code: http.StatusOK,
-			JSON: CheckAddressResp{
-				RetCode: "1",
-				Message: "over limit",
-			},
 		}
 	}
 
 	return util.JSONResponse{
 		Code: http.StatusOK,
-		JSON: CheckAddressResp{
-			RetCode: "0",
-			Message: "",
-		},
+		JSON: resp,
 	}
 }
 func queryCoinLimit(
