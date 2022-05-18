@@ -7,3 +7,6 @@ postgres:
   dbname : trondb
   execSchema : true
 #  execSchema : false
+admin:
+  username : ANrtKSTDxQDaGLMsZxJIYzCz7q3t4JrRdk1N
+  password : RNrtKAXnjAaGLOQsZDJIYzCO7q3t4JrRMkex

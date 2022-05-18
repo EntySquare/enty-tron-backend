@@ -18,6 +18,10 @@ type Conf struct {
 		Dbname     string `yaml:"dbname"`
 		ExecSchema bool   `yaml:"execSchema"`
 	} `yaml:"postgres"`
+	Admin struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"admin"`
 }
 
 func (m *Conf) GetConf() *Conf {

@@ -191,13 +191,13 @@ func (s *addressSta) selectAllSold(
 }
 func (s *addressSta) listAddressByStatus(
 	ctx context.Context, txn *sql.Tx,
-) (map[string]types.Address, error) {
+) ([]types.Address, error) {
 	rows, err := sqlutil.TxStmt(txn, s.listAddressByStatusStmt).QueryContext(ctx)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	maps := make(map[string]types.Address)
+	maps := make([]types.Address, 0)
 	for rows.Next() {
 		var b types.Address
 		if err = rows.Scan(
@@ -209,7 +209,7 @@ func (s *addressSta) listAddressByStatus(
 		); err != nil {
 			return nil, err
 		}
-		maps[b.Address] = b
+		maps = append(maps, b)
 	}
 	return maps, rows.Err()
 }

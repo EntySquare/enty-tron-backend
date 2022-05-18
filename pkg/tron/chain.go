@@ -72,7 +72,7 @@ func ScanTron(db *storage.Database) {
 			if err != nil {
 				return err
 			}
-			for address, addr := range addrL {
+			for _, addr := range addrL {
 				ut, err := strconv.ParseInt(addr.UpdateTime, 10, 64)
 				if err != nil {
 					return err
@@ -80,7 +80,7 @@ func ScanTron(db *storage.Database) {
 				diff := time.Now().Unix() - ut
 				if diff > 150 {
 					if addr.Nft == "1" {
-						txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
+						txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
 						if err != nil {
 							return err
 						}
@@ -93,7 +93,7 @@ func ScanTron(db *storage.Database) {
 						}
 					}
 					if addr.Tb == "1" {
-						txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "1")
+						txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
 						if err != nil {
 							return err
 						}

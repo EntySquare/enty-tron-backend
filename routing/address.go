@@ -3,6 +3,7 @@ package routing
 import (
 	"database/sql"
 	"encoding/json"
+	"entysquare/enty-tron-backend/conf"
 	"entysquare/enty-tron-backend/pkg/jsonerror"
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
@@ -208,6 +209,167 @@ func confirmLimit(req *http.Request, db *storage.Database,
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: ConfirmLimitResp{
+			RetCode: "0",
+			Message: "",
+		},
+	}
+}
+func listAddressJoined(req *http.Request, db *storage.Database,
+) util.JSONResponse {
+	bodyIo := req.Body
+	ctx := req.Context()
+	reqBody, err := ioutil.ReadAll(bodyIo)
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("io can not been read successfully"),
+		}
+	}
+	reqParams := &ListAddressJoinedReq{}
+	err = json.Unmarshal(reqBody, reqParams)
+	if err != nil {
+		println(err)
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Transaction unmarshal error"),
+		}
+	}
+	var conf = new(conf.Conf).GetConf()
+	if reqParams.Username != conf.Admin.Username || reqParams.Password != conf.Admin.Password {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Wrong token "),
+		}
+	}
+	list := make([]AddressStatus, 0)
+	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		addrs, err := db.ListAddressByStatus(ctx, txn)
+		if err != nil {
+			return err
+		}
+		for _, addr := range addrs {
+			tbtxs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
+			if err != nil {
+				return err
+			}
+			if tbtxs != nil && tbtxs.Status == "0" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: tbtxs.TransactionType,
+					Status:          "0",
+				}
+				list = append(list, addrsStatus)
+			} else if tbtxs != nil && tbtxs.Status == "1" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: tbtxs.TransactionType,
+					Status:          "1",
+				}
+				list = append(list, addrsStatus)
+
+			} else if tbtxs != nil && tbtxs.Status == "2" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: tbtxs.TransactionType,
+					Status:          "2",
+				}
+				list = append(list, addrsStatus)
+			}
+
+			nfttxs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
+			if err != nil {
+				return err
+			}
+			if nfttxs != nil && nfttxs.Status == "0" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: nfttxs.TransactionType,
+					Status:          "0",
+				}
+				list = append(list, addrsStatus)
+			} else if nfttxs != nil && nfttxs.Status == "1" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: nfttxs.TransactionType,
+					Status:          "1",
+				}
+				list = append(list, addrsStatus)
+
+			} else if nfttxs != nil && nfttxs.Status == "2" {
+				addrsStatus := AddressStatus{
+					Address:         addr.Address,
+					TransactionType: nfttxs.TransactionType,
+					Status:          "2",
+				}
+				list = append(list, addrsStatus)
+			}
+		}
+		return nil
+	})
+	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown(" list Address error"),
+		}
+	}
+	return util.JSONResponse{
+		Code: http.StatusOK,
+		JSON: ListAddressJoinedResp{
+			RetCode: "0",
+			List:    list,
+		},
+	}
+}
+func setAddressJoined(req *http.Request, db *storage.Database,
+) util.JSONResponse {
+	bodyIo := req.Body
+	ctx := req.Context()
+	reqBody, err := ioutil.ReadAll(bodyIo)
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("io can not been read successfully"),
+		}
+	}
+	reqParams := &SetAddressStatusReq{}
+	err = json.Unmarshal(reqBody, reqParams)
+	if err != nil {
+		println(err)
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("SetAddressStatusReq unmarshal error"),
+		}
+	}
+	var conf = new(conf.Conf).GetConf()
+	if reqParams.Username != conf.Admin.Username || reqParams.Password != conf.Admin.Password {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Wrong token "),
+		}
+	}
+	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		txs, err := db.SelectTxsByAddressAndType(ctx, txn, reqParams.AddrStatus.Address, reqParams.AddrStatus.TransactionType)
+		if err != nil {
+			return err
+		}
+		if txs != nil {
+			txs.Status = "2"
+			err = db.UpdateTxsByHash(ctx, txn, *txs)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown(" set status  error"),
+		}
+	}
+	return util.JSONResponse{
+		Code: http.StatusOK,
+		JSON: SetAddressStatusResp{
 			RetCode: "0",
 			Message: "",
 		},
