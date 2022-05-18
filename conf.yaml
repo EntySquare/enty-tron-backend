@@ -1,0 +1,9 @@
+postgres:
+  host : 127.0.0.1
+#  host : 47.243.62.135
+  port : 5436
+  user : tronuser
+  password : tron666
+  dbname : trondb
+  execSchema : true
+#  execSchema : false

@@ -1,0 +1,27 @@
+syntax = "proto2";
+package message;
+
+// Topic case WITHDRAW:
+// -
+// WITHDRAW_COLLECT
+message WithdrawCollectRequest {
+  required string userId = 1; //调用接口的user id
+  required string revenueAddress = 2; //收益账户地址
+  required string fromAddress = 3; //收益账户地址
+  optional string collectStatus = 4 [default = "0"];
+  optional string collectBalance = 5;
+}
+message RiskRequest {
+  required string userId = 1;
+  required int64 orderId = 2;
+  required string revenueAddress = 3; //收益账户地址
+  required string withdrawBalance = 4;
+  optional string symbol = 5;
+}
+message CollectCheck {
+  required int64 orderId = 1;
+  required int64 remainTxs = 2;
+}
+message ChainHandlerPanicRequest{
+  required string rhError = 1;
+}

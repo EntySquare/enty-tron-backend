@@ -1,0 +1,28 @@
+syntax = "proto2";
+package message;
+// General ORDER_RESP
+message OrderResponse {
+  required string userId = 1;
+  required string orderSerialNumber = 2;
+  required string orderStatus = 3;
+  optional string orderType = 4;
+  optional string orderResponse = 5;
+  optional string memo = 6;
+}
+// Topic case WITHDRAW:
+// -
+// <OMS>/<ChainHandler>: TRANSACTION_RESP TRANSACTION_UPDATE
+message TransactionResponse {
+  required string transactionId = 1;
+  required string orderSerialNumber = 2;
+  optional string transactionStatus = 3;
+}
+message TransactionUpdate {
+  required string transactionId = 1;
+  optional string transactionUpdateStatus = 2;
+}
+
+message RiskResponse {
+  required int64 orderId = 1;
+  optional string RiskStatus = 2 [default = "0"];
+}

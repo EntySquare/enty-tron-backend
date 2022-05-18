@@ -1,0 +1,73 @@
+syntax = "proto2";
+package message;
+message Order {
+  required int32 orderMessageId = 1;
+  required string userId = 2;
+  optional string orderType = 4;
+  optional string orderStatus = 5 [default = "0"];
+  optional string orderBalance = 6;
+}
+//orderStatus 0 待执行 1 已执行
+// Topic case TRANSFER:
+// -
+// <GateHandler>/<OMS>: TRANSFER_ORDER
+message TransferOrder {
+  required string userId = 1; //调用接口的user id
+  required string receiverId =2; //收款user id
+  optional string orderStatus = 4 [default = "0"];
+  optional string orderBalance = 5;
+  optional string symbol = 6;
+  optional string memo = 7;
+}
+// Topic case WITHDRAW:
+// -
+// <GateHandler>/<OMS>: WITHDRAW_ORDER
+message WithdrawOrder {
+  required string userId = 1; //调用接口的user id
+  required string revenueAddress = 2; //收益账户地址
+  optional string orderStatus = 4 [default = "0"];
+  optional string orderBalance = 5;
+  optional string symbol = 6;
+  optional string memo = 7;
+}
+// Topic case GEN_PAY_ORDER:
+// -
+// <GateHandler>/<OMS>: PAY_ORDER
+message PayOrder {
+  required string orderSerialNumber = 1;
+  required string payer = 2;
+  optional string symbol = 3;
+  optional string callBackUrl =4;
+  optional string memo = 7;
+}
+// Topic case DEPOSIT:
+// -
+// <OMS>/<ChainHandler>: DEPOSIT_ORDER
+message DepositOrder {
+  required string userId = 1; //调用接口的user id
+  required string fromAddress= 2; //付款账户的地址
+  required string receiveAddress= 3; //收款账户的地址
+  optional string orderStatus = 5 [default = "1"];
+  optional string orderBalance = 6;
+  optional string symbol = 7;
+  optional string txs = 8;
+}
+// Topic case GEN_PAY_ORDER:
+// -
+// <GateHandler>/<OMS>: MAKE_ORDER
+message GeneratePayOrder {
+  required string bUserId = 1; //调用接口的user id
+  optional string orderBalance = 2;
+  optional string symbol = 3;
+  optional string memo = 4;
+}
+// Topic case WITHDRAW:
+// -
+// <OMS>/<ChainHandler>: TRANSACTION
+message Transaction {
+  required string sendAddress = 1; //调用账户地址
+  required string revenueAddress = 2; //收益账户地址
+  optional string orderSerialNumber = 3;
+  optional string balance = 4;
+  optional string symbol = 5;
+}
