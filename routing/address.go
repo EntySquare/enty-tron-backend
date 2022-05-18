@@ -36,11 +36,18 @@ func checkAddress(
 		}
 	}
 	address := reqParams.Address
+	if address == "" {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("address is null"),
+		}
+	}
 	resp := CheckAddressResp{
 		RetCode:  "0",
 		TbLimit:  "0",
 		NftLimit: "0",
 	}
+
 	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
 		if err != nil {
@@ -58,8 +65,30 @@ func checkAddress(
 			}
 		} else {
 			if addr.Tb == "1" {
+				txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "1")
+				if err != nil {
+					return err
+				}
+				if txs != nil {
+					if txs.Status == "1" {
+						resp.TbLimit = "3"
+					} else {
+						resp.TbLimit = "2"
+					}
+				}
 				resp.TbLimit = "1"
 			} else if addr.Nft == "1" {
+				txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
+				if err != nil {
+					return err
+				}
+				if txs != nil {
+					if txs.Status == "1" {
+						resp.NftLimit = "3"
+					} else {
+						resp.NftLimit = "2"
+					}
+				}
 				resp.NftLimit = "1"
 			}
 		}
@@ -128,6 +157,12 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		}
 	}
 	address := reqParams.Address
+	if address == "" {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("address is null"),
+		}
+	}
 	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
 		tb, nft, err := db.SelectAllSold(ctx, txn)
 		if err != nil {
@@ -164,12 +199,7 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		}
 		return nil
 	})
-	if err != nil && strings.Contains(err.Error(), "has been sold") {
-		return util.JSONResponse{
-			Code: http.StatusForbidden,
-			JSON: jsonerror.Unknown("has been sold"),
-		}
-	} else if err != nil && !strings.Contains(err.Error(), "has been sold") {
+	if err != nil && !strings.Contains(err.Error(), "has been sold") {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.Unknown(" confirm limit error"),

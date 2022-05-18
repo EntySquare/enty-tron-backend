@@ -78,8 +78,7 @@ func ScanTron(db *storage.Database) {
 					return err
 				}
 				diff := time.Now().Unix() - ut
-				min := diff / 60
-				if min > 3 {
+				if diff > 150 {
 					if addr.Nft == "1" {
 						txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
 						if err != nil {

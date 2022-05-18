@@ -5,8 +5,8 @@ type CheckAddressReq struct {
 }
 type CheckAddressResp struct {
 	RetCode  string `json:"retCode"`
-	TbLimit  string `json:"tbLimit"`
-	NftLimit string `json:"nftLimit"`
+	TbLimit  string `json:"tbLimit"`  // 0 未参与 1 已锁定待支付 2 已支付待确认 3已确认
+	NftLimit string `json:"nftLimit"` // 0 未参与 1 已锁定待支付 2 已支付待确认 3已确认
 }
 type TransactionInsertReq struct {
 	TransactionId   string `json:"transactionId"`
