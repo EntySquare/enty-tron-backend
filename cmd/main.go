@@ -30,7 +30,7 @@ func main() {
 	//}
 	routers := mux.NewRouter()
 	routing.Setup(routers, db)
-	err = http.ListenAndServe("0.0.0.0:9000", routers)
+	err = http.ListenAndServe("0.0.0.0:9009", routers)
 	if err != nil {
 		panic("error")
 	}

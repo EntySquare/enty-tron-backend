@@ -252,16 +252,10 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			if err != nil {
 				return err
 			}
-			if tbtxs != nil && tbtxs.Status == "0" {
+			if tbtxs != nil && tbtxs.Status == "1" {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
-					TransactionType: tbtxs.TransactionType,
-					Status:          "0",
-				}
-				list = append(list, addrsStatus)
-			} else if tbtxs != nil && tbtxs.Status == "1" {
-				addrsStatus := AddressStatus{
-					Address:         addr.Address,
+					TransactionId:   *tbtxs.Hash,
 					TransactionType: tbtxs.TransactionType,
 					Status:          "1",
 				}
@@ -270,6 +264,7 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			} else if tbtxs != nil && tbtxs.Status == "2" {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *tbtxs.Hash,
 					TransactionType: tbtxs.TransactionType,
 					Status:          "2",
 				}
@@ -280,16 +275,10 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			if err != nil {
 				return err
 			}
-			if nfttxs != nil && nfttxs.Status == "0" {
+			if nfttxs != nil && nfttxs.Status == "1" {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
-					TransactionType: nfttxs.TransactionType,
-					Status:          "0",
-				}
-				list = append(list, addrsStatus)
-			} else if nfttxs != nil && nfttxs.Status == "1" {
-				addrsStatus := AddressStatus{
-					Address:         addr.Address,
+					TransactionId:   *nfttxs.Hash,
 					TransactionType: nfttxs.TransactionType,
 					Status:          "1",
 				}
@@ -298,6 +287,7 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			} else if nfttxs != nil && nfttxs.Status == "2" {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *nfttxs.Hash,
 					TransactionType: nfttxs.TransactionType,
 					Status:          "2",
 				}

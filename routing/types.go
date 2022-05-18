@@ -27,6 +27,7 @@ type SetAddressStatusResp struct {
 }
 type AddressStatus struct {
 	Address         string `json:"address"`
+	TransactionId   string `json:"transactionId"`
 	TransactionType string `json:"transactionType"`
 	Status          string `json:"status"` // 0 已支付 1 链上已确认 2 管理员已确认
 
