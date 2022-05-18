@@ -78,7 +78,8 @@ func checkAddress(
 					}
 				}
 				resp.TbLimit = "1"
-			} else if addr.Nft == "1" {
+			}
+			if addr.Nft == "1" {
 				txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
 				if err != nil {
 					return err
