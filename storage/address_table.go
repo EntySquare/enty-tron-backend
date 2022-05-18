@@ -159,25 +159,24 @@ func (s *addressSta) selectAllSold(
 	if err != nil {
 		return 0, 0, err
 	}
-	//id,user_id,address,key,types,update_time
 	var b int64
 	for rows.Next() {
 		if err = rows.Scan(
-			b,
+			&b,
 		); err != nil {
 			return 0, 0, err
 		}
 	}
-	rows2, err := sqlutil.TxStmt(txn, s.selectNftSoldStmt).QueryContext(ctx)
-	defer rows2.Close()
+	rows, err = sqlutil.TxStmt(txn, s.selectNftSoldStmt).QueryContext(ctx)
+	defer rows.Close()
 	if err != nil {
 		return 0, 0, err
 	}
 	//id,user_id,address,key,types,update_time
 	var n int64
-	for rows2.Next() {
-		if err = rows2.Scan(
-			n,
+	for rows.Next() {
+		if err = rows.Scan(
+			&n,
 		); err != nil {
 			return 0, 0, err
 		}
