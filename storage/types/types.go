@@ -3,7 +3,7 @@ package types
 type Address struct {
 	Id         int64
 	Address    string
-	Types      string
+	Types      string //
 	UpdateTime string
 }
 type Txs struct {
