@@ -69,6 +69,9 @@ func (d *Database) InsertAddress(ctx context.Context, txn *sql.Tx, addr types.Ad
 ) error {
 	return d.add.insertAddress(ctx, txn, addr)
 }
+func (d *Database) UpdateAddressById(ctx context.Context, txn *sql.Tx, a types.Address) (err error) {
+	return d.add.updateAddressById(ctx, txn, a)
+}
 func (d *Database) InsertTxs(ctx context.Context, txn *sql.Tx, tx types.Txs) (err error) {
 	return d.txs.insertTxs(ctx, txn, tx)
 }
@@ -76,10 +79,10 @@ func (d *Database) UpdateTxs(ctx context.Context, txn *sql.Tx, b types.Txs) (err
 	return d.txs.updateTxs(ctx, txn, b)
 }
 func (d *Database) SelectTxs(ctx context.Context, txn *sql.Tx, hash string, chain string) (result *types.Txs, err error) {
-	return d.txs.selectTxs(ctx, txn, hash, chain)
+	return d.txs.selectTxs(ctx, txn, hash)
 }
 func (d *Database) SelectCollectTxs(ctx context.Context, txn *sql.Tx, chain string) (result int64, err error) {
-	return d.txs.selectCollectTxs(ctx, txn, chain)
+	return d.txs.selectCollectTxs(ctx, txn)
 }
 func (d *Database) UpdateTxsByHash(ctx context.Context, txn *sql.Tx, b types.Txs) (err error) {
 	return d.txs.updateTxsByHash(ctx, txn, b)

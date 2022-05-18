@@ -25,10 +25,15 @@ const selectAddressSQL = "" +
 	"SELECT id,address,types,update_time FROM address where id = $1 "
 const selectAddressByAddressSQL = "" +
 	"SELECT id,address,types,update_time FROM address where address = $1 "
+const updateAddressByIdSQL = "" +
+	" UPDATE address SET address = $1 , types = $2 , update_time = $3 " +
+	" WHERE " +
+	" id = $4 "
 
 type addressSta struct {
 	insertAddressStmt          *sql.Stmt
 	selectAddressStmt          *sql.Stmt
+	updateAddressByIdStmt      *sql.Stmt
 	selectAddressByAddressStmt *sql.Stmt
 }
 
@@ -45,6 +50,9 @@ func (s *addressSta) prepare(db *sql.DB) (err error) {
 		return
 	}
 	if s.insertAddressStmt, err = db.Prepare(insertAddressSQL); err != nil {
+		return
+	}
+	if s.updateAddressByIdStmt, err = db.Prepare(updateAddressByIdSQL); err != nil {
 		return
 	}
 	return
@@ -106,6 +114,25 @@ func (s *addressSta) insertAddress(ctx context.Context, txn *sql.Tx, addr types.
 	}
 	if i == 0 {
 		return fmt.Errorf("insertUser insertAddress i==0")
+	}
+	return nil
+}
+func (s *addressSta) updateAddressById(ctx context.Context, txn *sql.Tx, b types.Address) (err error) {
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	res, err := sqlutil.TxStmt(txn, s.updateAddressByIdStmt).Exec(
+		b.Address, b.Types, now, //set
+		b.Id, //where
+	)
+	if err != nil {
+		return err
+	}
+	i, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if i == 0 {
+		return fmt.Errorf("updateAddressById insertBalance i==0")
 	}
 	return nil
 }
