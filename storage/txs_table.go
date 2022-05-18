@@ -18,35 +18,39 @@ create table IF NOT EXISTS txs
     -- success,fail
     status      	 text,
     address       text,
+    transaction_type text,
     insert_time TEXT
 );
 `
 
 type txsSta struct {
-	insertTxsyStmt       *sql.Stmt
-	updateTxsStmt        *sql.Stmt
-	updateTxsByHashStmt  *sql.Stmt
-	selectTxsStmt        *sql.Stmt
-	listTxsByStatusStmt  *sql.Stmt
-	selectCollectTxsStmt *sql.Stmt
+	insertTxsyStmt                *sql.Stmt
+	updateTxsStmt                 *sql.Stmt
+	updateTxsByHashStmt           *sql.Stmt
+	selectTxsStmt                 *sql.Stmt
+	listTxsByStatusStmt           *sql.Stmt
+	selectTxsByAddressAndTypeStmt *sql.Stmt
+	selectCollectTxsStmt          *sql.Stmt
 }
 
 const insertTxsySQL = "" +
-	"INSERT INTO txs(hash, status, address, insert_time) VALUES ($1, $2, $3, $4) "
+	"INSERT INTO txs(hash, status, address,transaction_type, insert_time) VALUES ($1, $2, $3, $4,$5) "
 const updateTxsSQL = "" +
-	" UPDATE txs SET hash = $1 , status = $2 , address = $3 , insert_time = $4" +
+	" UPDATE txs SET hash = $1 , status = $2 , address = $3 ,transaction_type = $4, insert_time = $5" +
 	" WHERE " +
-	" id = $5  "
+	" id = $6  "
 const selectTxsSQL = "" +
-	"SELECT id,hash,status,address,insert_time FROM txs where hash = $1  "
+	"SELECT id,hash,status,address,transaction_type,insert_time FROM txs where hash = $1  "
 const listTxsByStatusSQL = "" +
-	"SELECT id,hash,status,address,insert_time FROM txs where status = '0'  "
+	"SELECT id,hash,status,address,transaction_type,insert_time FROM txs where status = '0'  "
+const selectTxsByAddressAndTypeSQL = "" +
+	"SELECT id,hash,status,address,transaction_type,insert_time FROM txs where address = $1 and transaction_type = $2 and status <> '-1'   "
 const selectCollectTxsSQL = "" +
 	"SELECT count(1) FROM txs where address = $1 and status = '0'"
 const updateTxsByHashSQL = "" +
-	" UPDATE txs SET hash = $1 , status = $2 , address = $3 , insert_time = $4" +
+	" UPDATE txs SET hash = $1 , status = $2 , address = $3 ,transaction_type = $4, insert_time = $5" +
 	" WHERE " +
-	" hash = $5  "
+	" hash = $6  "
 
 func (s *txsSta) execSchema(db *sql.DB) error {
 	_, err := db.Exec(txsSchema)
@@ -69,6 +73,9 @@ func (s *txsSta) prepare(db *sql.DB) (err error) {
 	if s.listTxsByStatusStmt, err = db.Prepare(listTxsByStatusSQL); err != nil {
 		return
 	}
+	if s.selectTxsByAddressAndTypeStmt, err = db.Prepare(selectTxsByAddressAndTypeSQL); err != nil {
+		return
+	}
 	if s.selectCollectTxsStmt, err = db.Prepare(selectCollectTxsSQL); err != nil {
 		return
 	}
@@ -80,14 +87,14 @@ func (s *txsSta) insertTxs(ctx context.Context, txn *sql.Tx, p types.Txs) (err e
 	now := strconv.FormatInt(time.Now().Unix(), 10)
 	_, err = sqlutil.TxStmt(txn, s.insertTxsyStmt).
 		ExecContext(ctx,
-			p.Hash, p.Status, p.Address, &now)
+			p.Hash, p.Status, p.Address, p.TransactionType, &now)
 	fmt.Println(p.Status+"~txs 插入：", txn)
 	return
 }
 func (s *txsSta) updateTxs(ctx context.Context, txn *sql.Tx, b types.Txs) (err error) {
 	now := strconv.FormatInt(time.Now().Unix(), 10)
 	res, err := sqlutil.TxStmt(txn, s.updateTxsStmt).Exec(
-		b.Hash, b.Status, b.Address, now, //set
+		b.Hash, b.Status, b.Address, b.TransactionType, now, //set
 		b.Id, //where
 	)
 	if err != nil {
@@ -122,6 +129,7 @@ func (s *txsSta) selectTxs(
 			&b.Hash,
 			&b.Status,
 			&b.Address,
+			&b.TransactionType,
 			&b.InsertTime,
 		); err != nil {
 			return nil, err
@@ -151,7 +159,7 @@ func (s *txsSta) selectCollectTxs(
 func (s *txsSta) updateTxsByHash(ctx context.Context, txn *sql.Tx, b types.Txs) (err error) {
 	now := strconv.FormatInt(time.Now().Unix(), 10)
 	res, err := sqlutil.TxStmt(txn, s.updateTxsByHashStmt).Exec(
-		b.Hash, b.Status, b.Address, now, //set
+		b.Hash, b.Status, b.Address, b.TransactionType, now, //set
 		b.Hash, //where
 	)
 	if err != nil {
@@ -183,6 +191,7 @@ func (s *txsSta) listTxsStatus(
 			&b.Hash,
 			&b.Status,
 			&b.Address,
+			&b.TransactionType,
 			&b.InsertTime,
 		); err != nil {
 			return nil, err
@@ -190,4 +199,31 @@ func (s *txsSta) listTxsStatus(
 		maps[*b.Hash] = b
 	}
 	return maps, rows.Err()
+}
+func (s *txsSta) selectTxsByAddressAndType(
+	ctx context.Context, txn *sql.Tx, address string, ttype string,
+) (*types.Txs, error) {
+	rows, err := sqlutil.TxStmt(txn, s.selectTxsByAddressAndTypeStmt).QueryContext(ctx, address, ttype)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	//id,user_id,address,key,types,update_time
+	var b *types.Txs
+	for rows.Next() {
+		if b == nil {
+			b = &types.Txs{}
+		}
+		if err = rows.Scan(
+			&b.Id,
+			&b.Hash,
+			&b.Status,
+			&b.Address,
+			&b.TransactionType,
+			&b.InsertTime,
+		); err != nil {
+			return nil, err
+		}
+	}
+	return b, rows.Err()
 }

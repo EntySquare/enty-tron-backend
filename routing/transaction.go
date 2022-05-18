@@ -64,10 +64,15 @@ func insertTransaction(
 		if addr == nil {
 			return fmt.Errorf("address not exist")
 		} else {
+			txs, err := db.SelectTxs(ctx, txn, reqParams.TransactionId)
+			if txs != nil {
+				return fmt.Errorf("has been insert")
+			}
 			tx := types.Txs{
-				Hash:    &reqParams.TransactionId,
-				Address: reqParams.Address,
-				Status:  "0", //未确认
+				Hash:            &reqParams.TransactionId,
+				Address:         reqParams.Address,
+				Status:          "0", //未确认
+				TransactionType: reqParams.TransactionType,
 			}
 			err = db.InsertTxs(ctx, txn, tx)
 			if err != nil {

@@ -94,3 +94,9 @@ func (d *Database) SelectAllSold(ctx context.Context, txn *sql.Tx) (tb int64, nf
 func (d *Database) ListTxsByStatus(ctx context.Context, txn *sql.Tx) (maps map[string]types.Txs, err error) {
 	return d.txs.listTxsStatus(ctx, txn)
 }
+func (d *Database) ListAddressByStatus(ctx context.Context, txn *sql.Tx) (maps map[string]types.Address, err error) {
+	return d.add.listAddressByStatus(ctx, txn)
+}
+func (d *Database) SelectTxsByAddressAndType(ctx context.Context, txn *sql.Tx, address string, ttype string) (txs *types.Txs, err error) {
+	return d.txs.selectTxsByAddressAndType(ctx, txn, address, ttype)
+}

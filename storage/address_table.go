@@ -30,6 +30,8 @@ const selectNftSoldSQL = "" +
 	"SELECT count(1) FROM address where  nft = '1'"
 const selectTbSoldSQL = "" +
 	"SELECT count(1) FROM address where  tb = '1'"
+const listAddressByStatusSQL = "" +
+	"SELECT id,address,nft,tb,update_time FROM address where nft = '1' or tb = '1' "
 const updateAddressByIdSQL = "" +
 	" UPDATE address SET address = $1 , nft = $2 , tb = $3 , update_time = $4 " +
 	" WHERE " +
@@ -41,6 +43,7 @@ type addressSta struct {
 	updateAddressByIdStmt      *sql.Stmt
 	selectNftSoldStmt          *sql.Stmt
 	selectTbSoldStmt           *sql.Stmt
+	listAddressByStatusStmt    *sql.Stmt
 	selectAddressByAddressStmt *sql.Stmt
 }
 
@@ -60,6 +63,9 @@ func (s *addressSta) prepare(db *sql.DB) (err error) {
 		return
 	}
 	if s.selectTbSoldStmt, err = db.Prepare(selectTbSoldSQL); err != nil {
+		return
+	}
+	if s.listAddressByStatusStmt, err = db.Prepare(listAddressByStatusSQL); err != nil {
 		return
 	}
 	if s.insertAddressStmt, err = db.Prepare(insertAddressSQL); err != nil {
@@ -182,4 +188,28 @@ func (s *addressSta) selectAllSold(
 		}
 	}
 	return b, n, rows.Err()
+}
+func (s *addressSta) listAddressByStatus(
+	ctx context.Context, txn *sql.Tx,
+) (map[string]types.Address, error) {
+	rows, err := sqlutil.TxStmt(txn, s.listAddressByStatusStmt).QueryContext(ctx)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	maps := make(map[string]types.Address)
+	for rows.Next() {
+		var b types.Address
+		if err = rows.Scan(
+			&b.Id,
+			&b.Address,
+			&b.Nft,
+			&b.Tb,
+			&b.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		maps[b.Address] = b
+	}
+	return maps, rows.Err()
 }

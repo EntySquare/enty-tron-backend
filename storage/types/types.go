@@ -8,11 +8,12 @@ type Address struct {
 	UpdateTime string
 }
 type Txs struct {
-	Id         int64
-	Hash       *string
-	Address    string
-	Status     string
-	InsertTime string
+	Id              int64
+	Hash            *string
+	Address         string
+	Status          string
+	TransactionType string
+	InsertTime      string
 }
 type User struct {
 	Id     int64

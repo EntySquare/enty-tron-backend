@@ -6,6 +6,7 @@ import (
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
+	"strconv"
 	"time"
 )
 
@@ -64,6 +65,46 @@ func ScanTron(db *storage.Database) {
 					err = db.UpdateTxsByHash(ctx, txn, txs)
 					if err != nil {
 						return err
+					}
+				}
+			}
+			addrL, err := db.ListAddressByStatus(ctx, txn)
+			if err != nil {
+				return err
+			}
+			for address, addr := range addrL {
+				ut, err := strconv.ParseInt(addr.UpdateTime, 10, 64)
+				if err != nil {
+					return err
+				}
+				diff := time.Now().Unix() - ut
+				min := diff / 60
+				if min > 3 {
+					if addr.Nft == "1" {
+						txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
+						if err != nil {
+							return err
+						}
+						if txs == nil {
+							addr.Nft = "0"
+							err = db.UpdateAddressById(ctx, txn, addr)
+							if err != nil {
+								return err
+							}
+						}
+					}
+					if addr.Tb == "1" {
+						txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "1")
+						if err != nil {
+							return err
+						}
+						if txs == nil {
+							addr.Tb = "0"
+							err = db.UpdateAddressById(ctx, txn, addr)
+							if err != nil {
+								return err
+							}
+						}
 					}
 				}
 			}

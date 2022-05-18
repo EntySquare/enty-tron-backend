@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func checkAddress(
@@ -146,8 +147,14 @@ func confirmLimit(req *http.Request, db *storage.Database,
 			return fmt.Errorf("address not exist")
 		} else {
 			if reqParams.TransactionType == "1" {
+				if addr.Tb == "1" {
+					return fmt.Errorf("has been sold")
+				}
 				addr.Tb = "1"
 			} else if reqParams.TransactionType == "2" {
+				if addr.Nft == "1" {
+					return fmt.Errorf("has been sold")
+				}
 				addr.Nft = "1"
 			}
 			err = db.UpdateAddressById(ctx, txn, *addr)
@@ -157,10 +164,15 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "has been sold") {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
-			JSON: jsonerror.Unknown("update address error"),
+			JSON: jsonerror.Unknown("has been sold"),
+		}
+	} else if err != nil && !strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown(" confirm limit error"),
 		}
 	}
 	return util.JSONResponse{
