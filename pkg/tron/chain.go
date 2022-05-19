@@ -82,7 +82,6 @@ func ScanTron(db *storage.Database) {
 					}
 				}
 				if !flag && err2 != nil {
-					return err2
 				}
 			}
 			return nil

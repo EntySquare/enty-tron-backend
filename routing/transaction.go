@@ -82,6 +82,7 @@ func insertTransaction(
 		return nil
 	})
 	if err != nil && strings.Contains(err.Error(), "over limit") {
+		fmt.Println("over limit")
 		return util.JSONResponse{
 			Code: http.StatusOK,
 			JSON: TransactionInsertResp{
@@ -90,6 +91,7 @@ func insertTransaction(
 			},
 		}
 	} else if err != nil && !strings.Contains(err.Error(), "over limit") {
+		fmt.Println("limit")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
