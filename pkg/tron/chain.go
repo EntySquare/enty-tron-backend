@@ -52,7 +52,7 @@ func ScanTron(db *storage.Database) {
 				return err
 			}
 			for hash, txs := range hashL {
-				flag, err2 := util.CheckTransaction(hash)
+				flag, _ := util.CheckTransaction(hash)
 				if flag {
 					txs.Status = "1"
 					err = db.UpdateTxsByHash(ctx, txn, txs)
@@ -60,7 +60,7 @@ func ScanTron(db *storage.Database) {
 						return err
 					}
 				}
-				if !flag && err2 == nil {
+				if !flag {
 					txs.Status = "-1"
 					err = db.UpdateTxsByHash(ctx, txn, txs)
 					if err != nil {
@@ -80,8 +80,6 @@ func ScanTron(db *storage.Database) {
 					if err != nil {
 						return err
 					}
-				}
-				if !flag && err2 != nil {
 				}
 			}
 			return nil
