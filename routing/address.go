@@ -90,7 +90,7 @@ func checkAddress(
 				if txs != nil {
 					if txs.Status == "1" {
 						resp.NftLimit = "2"
-					} else {
+					} else if txs.Status == "2" {
 						resp.NftLimit = "3"
 					}
 				}
