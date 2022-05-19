@@ -57,7 +57,7 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 			time.Sleep(time.Second * 10)
 			flag, _ := util.CheckTransaction(hash)
 			if flag {
-				txs.Status = "1"
+				txs.Status = TXS_CHAIN_CONFIRM
 				err = db.UpdateTxsByHash(ctx, txn, *txs)
 				if err != nil {
 					return err
@@ -67,7 +67,7 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 		}
 		flag, _ := util.CheckTransaction(hash)
 		if flag {
-			txs.Status = "1"
+			txs.Status = TXS_CHAIN_CONFIRM
 			err = db.UpdateTxsByHash(ctx, txn, *txs)
 			if err != nil {
 				return err
@@ -75,7 +75,7 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 			return nil
 		}
 		if !flag {
-			txs.Status = "-1"
+			txs.Status = TXS_CHAIN_FAILED
 			err = db.UpdateTxsByHash(ctx, txn, *txs)
 			if err != nil {
 				return err
@@ -84,10 +84,10 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 			if err != nil {
 				return err
 			}
-			if txs.TransactionType == "1" {
+			if txs.TransactionType == TYPE_TB {
 				addr.Tb = "0"
 			}
-			if txs.TransactionType == "2" {
+			if txs.TransactionType == TYPE_NFT {
 				addr.Nft = "0"
 			}
 			err = db.UpdateAddressById(ctx, txn, *addr)

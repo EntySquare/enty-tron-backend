@@ -20,9 +20,6 @@ var resourceLock = func() sync.Mutex {
 	return sync.Mutex{}
 }()
 
-const tbLimit = 200
-const nftLimit = 200
-
 func insertTransaction(
 	req *http.Request, db *storage.Database,
 ) util.JSONResponse {
@@ -52,10 +49,10 @@ func insertTransaction(
 		if err != nil {
 			return err
 		}
-		if reqParams.TransactionType == "1" && tb == tbLimit {
+		if reqParams.TransactionType == tron.TYPE_TB && tb == tron.TBLIMIT {
 			return fmt.Errorf("over limit")
 		}
-		if reqParams.TransactionType == "2" && nft == nftLimit {
+		if reqParams.TransactionType == tron.TYPE_TB && nft == tron.NFTLIMIT {
 			return fmt.Errorf("over limit")
 		}
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
@@ -72,7 +69,7 @@ func insertTransaction(
 			tx := types.Txs{
 				Hash:            &reqParams.TransactionId,
 				Address:         reqParams.Address,
-				Status:          "0", //未确认
+				Status:          tron.TXS_WAITING_FOR_CHAIN_CONFIRM, //未确认
 				TransactionType: reqParams.TransactionType,
 			}
 			err = db.InsertTxs(ctx, txn, tx)
@@ -87,7 +84,7 @@ func insertTransaction(
 		return util.JSONResponse{
 			Code: http.StatusOK,
 			JSON: TransactionInsertResp{
-				RetCode: "1",
+				RetCode: tron.OVERLIMIT,
 				Message: "over limit",
 			},
 		}
@@ -103,7 +100,7 @@ func insertTransaction(
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: TransactionInsertResp{
-			RetCode: "0",
+			RetCode: tron.SUCCESS,
 			Message: "",
 		},
 	}
