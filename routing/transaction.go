@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"entysquare/enty-tron-backend/pkg/jsonerror"
+	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 var resourceLock = func() sync.Mutex {
@@ -97,6 +99,8 @@ func insertTransaction(
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
+	time.Sleep(time.Second * 5)
+	tron.ScanTron(db, address, reqParams.TransactionType)
 	fmt.Println(address + " ::::insertTransaction:::: " + reqParams.TransactionId + " :::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,

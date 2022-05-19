@@ -1,7 +1,6 @@
 package main
 
 import (
-	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/routing"
 	"entysquare/enty-tron-backend/storage"
 	"github.com/gorilla/mux"
@@ -23,7 +22,7 @@ func main() {
 	//if err != nil {
 	//	print("kafka msg err:", err)
 	//}
-	go tron.ScanTron(db)
+	//	go tron.ScanTron(db)
 	//err = th.Run()
 	//if err != nil {
 	//	panic(err)
