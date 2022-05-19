@@ -14,8 +14,8 @@ const IDOOVERLIMIT = "3"
 const LOCKED = "2"
 
 //limit const
-const TBLIMIT = 2
-const NFTLIMIT = 2
+const TBLIMIT = 200
+const NFTLIMIT = 200
 
 //txs status
 const TXS_WAITING_FOR_CHAIN_CONFIRM = "0"
