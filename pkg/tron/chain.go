@@ -90,6 +90,6 @@ func ScanTron(db *storage.Database) {
 		if err != nil {
 			panic(err)
 		}
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 30)
 	}
 }
