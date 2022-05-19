@@ -6,6 +6,8 @@ import (
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
+	"fmt"
+	"time"
 )
 
 //type TH struct {
@@ -87,4 +89,52 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 		panic(err)
 	}
 
+}
+func UnlockLimit(db *storage.Database, address string) {
+	time.Sleep(time.Second * 60)
+	ctx := context.TODO()
+	err := sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		addr, err := db.SelectAddressByAddress(ctx, txn, address)
+		if err != nil {
+			return err
+		}
+		var count = 0
+		if addr.Nft == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 1
+				fmt.Println(addr.Address + " ::::return limit:::: 2")
+			}
+		}
+		if addr.Tb == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 2
+
+				fmt.Println(addr.Address + " ::::return limit:::: 1")
+			}
+		}
+		if count == 3 {
+			addr.Tb = "0"
+			addr.Nft = "0"
+		} else if count == 2 {
+			addr.Tb = "0"
+		} else if count == 1 {
+			addr.Nft = "0"
+		}
+		err = db.UpdateAddressById(ctx, txn, *addr)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }

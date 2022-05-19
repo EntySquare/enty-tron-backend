@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"entysquare/enty-tron-backend/conf"
 	"entysquare/enty-tron-backend/pkg/jsonerror"
+	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
@@ -246,6 +247,7 @@ func confirmLimit(req *http.Request, db *storage.Database,
 			JSON: jsonerror.Unknown(" confirm limit error"),
 		}
 	}
+	go tron.UnlockLimit(db, address)
 	fmt.Println(address + " ::::confirmLimit:::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,
