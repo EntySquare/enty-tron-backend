@@ -70,28 +70,29 @@ func checkAddress(
 				if err != nil {
 					return err
 				}
+				resp.TbLimit = "1"
 				if txs != nil {
 					if txs.Status == "1" {
-						resp.TbLimit = "3"
-					} else {
 						resp.TbLimit = "2"
+					} else if txs.Status == "2" {
+						resp.TbLimit = "3"
 					}
 				}
-				resp.TbLimit = "1"
+
 			}
 			if addr.Nft == "1" {
 				txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
 				if err != nil {
 					return err
 				}
+				resp.NftLimit = "1"
 				if txs != nil {
 					if txs.Status == "1" {
-						resp.NftLimit = "3"
-					} else {
 						resp.NftLimit = "2"
+					} else {
+						resp.NftLimit = "3"
 					}
 				}
-				resp.NftLimit = "1"
 			}
 		}
 		return nil
