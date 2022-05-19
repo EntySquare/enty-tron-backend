@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 var resourceLock = func() sync.Mutex {
@@ -99,8 +98,7 @@ func insertTransaction(
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
-	time.Sleep(time.Second * 5)
-	tron.ScanTron(db, address, reqParams.TransactionType)
+	go tron.ScanTron(db, address, reqParams.TransactionType)
 	fmt.Println(address + " ::::insertTransaction:::: " + reqParams.TransactionId + " :::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,

@@ -53,6 +53,18 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 			return err
 		}
 		hash := *txs.Hash
+		for i := 0; i < 2; i++ {
+			time.Sleep(time.Second * 10)
+			flag, _ := util.CheckTransaction(hash)
+			if flag {
+				txs.Status = "1"
+				err = db.UpdateTxsByHash(ctx, txn, *txs)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+		}
 		flag, _ := util.CheckTransaction(hash)
 		if flag {
 			txs.Status = "1"
@@ -60,6 +72,7 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 			if err != nil {
 				return err
 			}
+			return nil
 		}
 		if !flag {
 			txs.Status = "-1"
@@ -86,9 +99,9 @@ func ScanTron(db *storage.Database, address string, ttype string) {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
-
+	fmt.Println(address + " ::::updateTransaction:::: ")
 }
 func UnlockLimit(db *storage.Database, address string) {
 	time.Sleep(time.Second * 60)
