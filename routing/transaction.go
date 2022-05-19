@@ -95,7 +95,7 @@ func insertTransaction(
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
-
+	fmt.Println(address + " ::::insertTransaction:::: " + reqParams.TransactionId + " :::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: TransactionInsertResp{

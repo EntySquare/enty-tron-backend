@@ -6,7 +6,6 @@ import (
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
-	"strconv"
 	"time"
 )
 
@@ -44,7 +43,7 @@ import (
 //}
 func ScanTron(db *storage.Database) {
 	for {
-		println(time.Now().Format("2006-01-02::15:04:05"))
+		//println(time.Now().Format("2006-01-02::15:04:05"))
 		err := sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
 			ctx := context.TODO()
 			//start := time.Now()
@@ -60,51 +59,30 @@ func ScanTron(db *storage.Database) {
 					if err != nil {
 						return err
 					}
-				} else if err2 == nil {
+				}
+				if !flag && err2 == nil {
 					txs.Status = "-1"
 					err = db.UpdateTxsByHash(ctx, txn, txs)
 					if err != nil {
 						return err
 					}
-				}
-			}
-			addrL, err := db.ListAddressByStatus(ctx, txn)
-			if err != nil {
-				return err
-			}
-			for _, addr := range addrL {
-				ut, err := strconv.ParseInt(addr.UpdateTime, 10, 64)
-				if err != nil {
-					return err
-				}
-				diff := time.Now().Unix() - ut
-				if diff > 150 {
-					if addr.Nft == "1" {
-						txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
-						if err != nil {
-							return err
-						}
-						if txs == nil {
-							addr.Nft = "0"
-							err = db.UpdateAddressById(ctx, txn, addr)
-							if err != nil {
-								return err
-							}
-						}
+					addr, err := db.SelectAddressByAddress(ctx, txn, txs.Address)
+					if err != nil {
+						return err
 					}
-					if addr.Tb == "1" {
-						txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
-						if err != nil {
-							return err
-						}
-						if txs == nil {
-							addr.Tb = "0"
-							err = db.UpdateAddressById(ctx, txn, addr)
-							if err != nil {
-								return err
-							}
-						}
+					if txs.TransactionType == "1" {
+						addr.Tb = "0"
 					}
+					if txs.TransactionType == "2" {
+						addr.Nft = "0"
+					}
+					err = db.UpdateAddressById(ctx, txn, *addr)
+					if err != nil {
+						return err
+					}
+				}
+				if !flag && err2 != nil {
+					return err2
 				}
 			}
 			return nil
@@ -112,6 +90,6 @@ func ScanTron(db *storage.Database) {
 		if err != nil {
 			panic(err)
 		}
-		time.Sleep(time.Second * 20)
+		time.Sleep(time.Second * 2)
 	}
 }

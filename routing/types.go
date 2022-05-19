@@ -54,3 +54,11 @@ type QueryCoinLimitResp struct {
 	TbHasBeenSold  int64  `json:"tbHasBeenSold"`
 	NftHasBeenSold int64  `json:"nftHasBeenSold"`
 }
+type ReturnLimitReq struct {
+	Address         string `json:"address"`
+	TransactionType string `json:"transactionType"` //交易类型，tb coin 1，nft 2
+}
+type ReturnLimitResp struct {
+	RetCode string `json:"retCode"`
+	Message string `json:"message"`
+}

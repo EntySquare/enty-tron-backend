@@ -38,6 +38,13 @@ func Setup(
 			return confirmLimit(req, accountDB)
 		}),
 	).Methods(http.MethodPost, http.MethodOptions)
+
+	r0mux.Handle("/tron/address/returnLimit",
+		httputil.MakeExternalAPI("returnLimit", func(req *http.Request) util.JSONResponse {
+			return returnLimit(req, accountDB)
+		}),
+	).Methods(http.MethodPost, http.MethodOptions)
+
 	r0mux.Handle("/tron/address/listAddressJoined",
 		httputil.MakeExternalAPI("listAddressJoined", func(req *http.Request) util.JSONResponse {
 			return listAddressJoined(req, accountDB)

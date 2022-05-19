@@ -97,12 +97,13 @@ func checkAddress(
 		return nil
 	})
 	if err != nil {
+		fmt.Println("checkAddress fail")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
-
+	//fmt.Println("checkAddress")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: resp,
@@ -122,11 +123,13 @@ func queryCoinLimit(
 	//}
 	tb, nft, err := db.SelectAllSold(ctx, nil)
 	if err != nil {
+		fmt.Println("queryCoinLimit fail")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select  err"),
 		}
 	}
+	//fmt.Println("queryCoinLimit")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: QueryCoinLimitResp{
@@ -187,10 +190,29 @@ func confirmLimit(req *http.Request, db *storage.Database,
 				if addr.Tb == "1" {
 					return fmt.Errorf("has been sold")
 				}
+				if addr.Nft == "1" {
+					txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
+					if err != nil {
+						return err
+					}
+					if txs == nil {
+						return fmt.Errorf("nft locked")
+					}
+				}
 				addr.Tb = "1"
+
 			} else if reqParams.TransactionType == "2" {
 				if addr.Nft == "1" {
 					return fmt.Errorf("has been sold")
+				}
+				if addr.Tb == "1" {
+					txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "1")
+					if err != nil {
+						return err
+					}
+					if txs == nil {
+						return fmt.Errorf("tb locked")
+					}
 				}
 				addr.Nft = "1"
 			}
@@ -201,12 +223,29 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		}
 		return nil
 	})
-	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+	if err != nil && strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusOK,
+			JSON: ConfirmLimitResp{
+				RetCode: "1",
+				Message: "have been sold",
+			},
+		}
+	} else if err != nil && strings.Contains(err.Error(), "locked") {
+		return util.JSONResponse{
+			Code: http.StatusOK,
+			JSON: ConfirmLimitResp{
+				RetCode: "2",
+				Message: "locked",
+			},
+		}
+	} else if err != nil && !strings.Contains(err.Error(), "has been sold") && !strings.Contains(err.Error(), "locked") {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.Unknown(" confirm limit error"),
 		}
 	}
+	fmt.Println(address + " ::::confirmLimit:::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: ConfirmLimitResp{
@@ -215,6 +254,98 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		},
 	}
 }
+
+func returnLimit(req *http.Request, db *storage.Database,
+) util.JSONResponse {
+	bodyIo := req.Body
+	ctx := req.Context()
+	reqBody, err := ioutil.ReadAll(bodyIo)
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("io can not been read successfully"),
+		}
+	}
+	reqParams := &ReturnLimitReq{}
+	err = json.Unmarshal(reqBody, reqParams)
+	if err != nil {
+		println(err)
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Transaction unmarshal error"),
+		}
+	}
+	address := reqParams.Address
+	if address == "" {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("address is null"),
+		}
+	}
+	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		addr, err := db.SelectAddressByAddress(ctx, txn, address)
+		if err != nil {
+			return err
+		}
+		var count = 0
+		if addr.Nft == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 1
+				fmt.Println(addr.Address + " ::::return limit:::: 2")
+			}
+		}
+		if addr.Tb == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 2
+
+				fmt.Println(addr.Address + " ::::return limit:::: 1")
+			}
+		}
+		if count == 3 {
+			addr.Tb = "0"
+			addr.Nft = "0"
+		} else if count == 2 {
+			addr.Tb = "0"
+		} else if count == 1 {
+			addr.Nft = "0"
+		}
+		err = db.UpdateAddressById(ctx, txn, *addr)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown(" confirm limit error"),
+		}
+	} else if err != nil && strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusAccepted,
+			JSON: ReturnLimitResp{
+				RetCode: "1",
+				Message: "has been sold",
+			},
+		}
+	}
+	return util.JSONResponse{
+		Code: http.StatusOK,
+		JSON: ReturnLimitResp{
+			RetCode: "0",
+			Message: "",
+		},
+	}
+}
+
 func listAddressJoined(req *http.Request, db *storage.Database,
 ) util.JSONResponse {
 	bodyIo := req.Body
@@ -358,6 +489,7 @@ func setAddressJoined(req *http.Request, db *storage.Database,
 			JSON: jsonerror.Unknown(" set status  error"),
 		}
 	}
+	fmt.Println("setAddressStatus")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: SetAddressStatusResp{
