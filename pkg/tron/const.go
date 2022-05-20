@@ -26,3 +26,7 @@ const TXS_ADMIN_CONFIRM = "2"
 //Txs type
 const TYPE_TB = "1"
 const TYPE_NFT = "2"
+
+//time
+const BEGIN_TIME = "2022-05-20 17:20:00"
+const LAYOUT_TIME = "2006-01-02 15:04:05"
