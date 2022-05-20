@@ -23,7 +23,7 @@ func CheckTransaction(hash string) (bool, error) {
 		var amount_str = gjson.Get(string(b), "tokenTransferInfo.amount_str").String()
 		var to_address = gjson.Get(string(b), "tokenTransferInfo.to_address").String()
 		//钱包不对
-		if strings.ToUpper(to_address) != strings.ToUpper("TPS8B8GzFHeDtuYG38Ek9qW1G1tJ5JwXrC") &&
+		if strings.ToUpper(to_address) != strings.ToUpper("TNNU5FtQT8nfdyogZuYy1pRo7ToBe7bvEH") &&
 			strings.ToUpper(to_address) != strings.ToUpper("THPT8T7ikAJZzsuZ4rD54qVbXEUnGgAAXg") {
 			return false, nil
 		}
