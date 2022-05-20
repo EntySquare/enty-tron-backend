@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"entysquare/enty-tron-backend/conf"
 	"entysquare/enty-tron-backend/pkg/jsonerror"
+	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
@@ -44,9 +45,9 @@ func checkAddress(
 		}
 	}
 	resp := CheckAddressResp{
-		RetCode:  "0",
-		TbLimit:  "0",
-		NftLimit: "0",
+		RetCode:  tron.SUCCESS,
+		TbLimit:  tron.UNCOMMITTED,
+		NftLimit: tron.UNCOMMITTED,
 	}
 
 	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
@@ -70,38 +71,41 @@ func checkAddress(
 				if err != nil {
 					return err
 				}
+				resp.TbLimit = tron.WAITING_FOR_PAYMENT
 				if txs != nil {
-					if txs.Status == "1" {
-						resp.TbLimit = "3"
-					} else {
-						resp.TbLimit = "2"
+					if txs.Status == tron.WAITING_FOR_PAYMENT {
+						resp.TbLimit = tron.WAITING_FOR_DELIVERY
+					} else if txs.Status == tron.TXS_ADMIN_CONFIRM {
+						resp.TbLimit = tron.DELIVERED
 					}
 				}
-				resp.TbLimit = "1"
-			} else if addr.Nft == "1" {
+
+			}
+			if addr.Nft == "1" {
 				txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
 				if err != nil {
 					return err
 				}
+				resp.NftLimit = tron.WAITING_FOR_PAYMENT
 				if txs != nil {
-					if txs.Status == "1" {
-						resp.NftLimit = "3"
-					} else {
-						resp.NftLimit = "2"
+					if txs.Status == tron.TXS_CHAIN_CONFIRM {
+						resp.NftLimit = tron.WAITING_FOR_DELIVERY
+					} else if txs.Status == tron.TXS_ADMIN_CONFIRM {
+						resp.NftLimit = tron.DELIVERED
 					}
 				}
-				resp.NftLimit = "1"
 			}
 		}
 		return nil
 	})
 	if err != nil {
+		fmt.Println("checkAddress fail")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
-
+	//fmt.Println("checkAddress")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: resp,
@@ -121,15 +125,17 @@ func queryCoinLimit(
 	//}
 	tb, nft, err := db.SelectAllSold(ctx, nil)
 	if err != nil {
+		fmt.Println("queryCoinLimit fail")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select  err"),
 		}
 	}
+	//fmt.Println("queryCoinLimit")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: QueryCoinLimitResp{
-			RetCode:        "0",
+			RetCode:        tron.SUCCESS,
 			TbHasBeenSold:  tb,
 			NftHasBeenSold: nft,
 		},
@@ -169,10 +175,10 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		if err != nil {
 			return err
 		}
-		if reqParams.TransactionType == "1" && tb == tbLimit {
+		if reqParams.TransactionType == tron.TYPE_TB && tb == tron.TBLIMIT {
 			return fmt.Errorf("over limit")
 		}
-		if reqParams.TransactionType == "2" && nft == nftLimit {
+		if reqParams.TransactionType == tron.TYPE_NFT && nft == tron.NFTLIMIT {
 			return fmt.Errorf("over limit")
 		}
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
@@ -182,14 +188,33 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		if addr == nil {
 			return fmt.Errorf("address not exist")
 		} else {
-			if reqParams.TransactionType == "1" {
+			if reqParams.TransactionType == tron.TYPE_TB {
 				if addr.Tb == "1" {
 					return fmt.Errorf("has been sold")
 				}
+				if addr.Nft == "1" {
+					txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "2")
+					if err != nil {
+						return err
+					}
+					if txs == nil {
+						return fmt.Errorf("nft locked")
+					}
+				}
 				addr.Tb = "1"
-			} else if reqParams.TransactionType == "2" {
+
+			} else if reqParams.TransactionType == tron.TYPE_NFT {
 				if addr.Nft == "1" {
 					return fmt.Errorf("has been sold")
+				}
+				if addr.Tb == "1" {
+					txs, err := db.SelectTxsByAddressAndType(ctx, txn, address, "1")
+					if err != nil {
+						return err
+					}
+					if txs == nil {
+						return fmt.Errorf("tb locked")
+					}
 				}
 				addr.Nft = "1"
 			}
@@ -200,20 +225,138 @@ func confirmLimit(req *http.Request, db *storage.Database,
 		}
 		return nil
 	})
-	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+	if err != nil && strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusOK,
+			JSON: ConfirmLimitResp{
+				RetCode: tron.SOLD,
+				Message: "have been sold",
+			},
+		}
+	} else if err != nil && strings.Contains(err.Error(), "locked") {
+		return util.JSONResponse{
+			Code: http.StatusOK,
+			JSON: ConfirmLimitResp{
+				RetCode: tron.LOCKED,
+				Message: "locked",
+			},
+		}
+	} else if err != nil && strings.Contains(err.Error(), "over limit") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: ConfirmLimitResp{
+				RetCode: tron.IDOOVERLIMIT,
+				Message: "over limit",
+			},
+		}
+	} else if err != nil && !strings.Contains(err.Error(), "has been sold") && !strings.Contains(err.Error(), "locked") && !strings.Contains(err.Error(), "over limit") {
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.Unknown(" confirm limit error"),
 		}
 	}
+	go tron.UnlockLimit(db, address)
+	fmt.Println(address + " ::::confirmLimit:::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: ConfirmLimitResp{
-			RetCode: "0",
+			RetCode: tron.SUCCESS,
 			Message: "",
 		},
 	}
 }
+
+func returnLimit(req *http.Request, db *storage.Database,
+) util.JSONResponse {
+	bodyIo := req.Body
+	ctx := req.Context()
+	reqBody, err := ioutil.ReadAll(bodyIo)
+	if err != nil {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("io can not been read successfully"),
+		}
+	}
+	reqParams := &ReturnLimitReq{}
+	err = json.Unmarshal(reqBody, reqParams)
+	if err != nil {
+		println(err)
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown("Transaction unmarshal error"),
+		}
+	}
+	address := reqParams.Address
+	if address == "" {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.NotFound("address is null"),
+		}
+	}
+	err = sqlutil.WithTransaction(db.Db, func(txn *sql.Tx) error {
+		addr, err := db.SelectAddressByAddress(ctx, txn, address)
+		if err != nil {
+			return err
+		}
+		var count = 0
+		if addr.Nft == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "2")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 1
+				fmt.Println(addr.Address + " ::::return limit:::: 2")
+			}
+		}
+		if addr.Tb == "1" {
+			txs, err := db.SelectTxsByAddressAndType(ctx, txn, addr.Address, "1")
+			if err != nil {
+				return err
+			}
+			if txs == nil {
+				count += 2
+
+				fmt.Println(addr.Address + " ::::return limit:::: 1")
+			}
+		}
+		if count == 3 {
+			addr.Tb = "0"
+			addr.Nft = "0"
+		} else if count == 2 {
+			addr.Tb = "0"
+		} else if count == 1 {
+			addr.Nft = "0"
+		}
+		err = db.UpdateAddressById(ctx, txn, *addr)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil && !strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusForbidden,
+			JSON: jsonerror.Unknown(" confirm limit error"),
+		}
+	} else if err != nil && strings.Contains(err.Error(), "has been sold") {
+		return util.JSONResponse{
+			Code: http.StatusAccepted,
+			JSON: ReturnLimitResp{
+				RetCode: tron.SOLD,
+				Message: "has been sold",
+			},
+		}
+	}
+	return util.JSONResponse{
+		Code: http.StatusOK,
+		JSON: ReturnLimitResp{
+			RetCode: tron.SUCCESS,
+			Message: "",
+		},
+	}
+}
+
 func listAddressJoined(req *http.Request, db *storage.Database,
 ) util.JSONResponse {
 	bodyIo := req.Body
@@ -252,26 +395,21 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			if err != nil {
 				return err
 			}
-			if tbtxs != nil && tbtxs.Status == "0" {
+			if tbtxs != nil && tbtxs.Status == tron.TXS_CHAIN_CONFIRM {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *tbtxs.Hash,
 					TransactionType: tbtxs.TransactionType,
-					Status:          "0",
-				}
-				list = append(list, addrsStatus)
-			} else if tbtxs != nil && tbtxs.Status == "1" {
-				addrsStatus := AddressStatus{
-					Address:         addr.Address,
-					TransactionType: tbtxs.TransactionType,
-					Status:          "1",
+					Status:          tron.TXS_CHAIN_CONFIRM,
 				}
 				list = append(list, addrsStatus)
 
-			} else if tbtxs != nil && tbtxs.Status == "2" {
+			} else if tbtxs != nil && tbtxs.Status == tron.TXS_CHAIN_CONFIRM {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *tbtxs.Hash,
 					TransactionType: tbtxs.TransactionType,
-					Status:          "2",
+					Status:          tron.TXS_CHAIN_CONFIRM,
 				}
 				list = append(list, addrsStatus)
 			}
@@ -280,26 +418,21 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 			if err != nil {
 				return err
 			}
-			if nfttxs != nil && nfttxs.Status == "0" {
+			if nfttxs != nil && nfttxs.Status == tron.TXS_CHAIN_CONFIRM {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *nfttxs.Hash,
 					TransactionType: nfttxs.TransactionType,
-					Status:          "0",
-				}
-				list = append(list, addrsStatus)
-			} else if nfttxs != nil && nfttxs.Status == "1" {
-				addrsStatus := AddressStatus{
-					Address:         addr.Address,
-					TransactionType: nfttxs.TransactionType,
-					Status:          "1",
+					Status:          tron.TXS_CHAIN_CONFIRM,
 				}
 				list = append(list, addrsStatus)
 
-			} else if nfttxs != nil && nfttxs.Status == "2" {
+			} else if nfttxs != nil && nfttxs.Status == tron.TXS_ADMIN_CONFIRM {
 				addrsStatus := AddressStatus{
 					Address:         addr.Address,
+					TransactionId:   *nfttxs.Hash,
 					TransactionType: nfttxs.TransactionType,
-					Status:          "2",
+					Status:          tron.TXS_ADMIN_CONFIRM,
 				}
 				list = append(list, addrsStatus)
 			}
@@ -315,7 +448,7 @@ func listAddressJoined(req *http.Request, db *storage.Database,
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: ListAddressJoinedResp{
-			RetCode: "0",
+			RetCode: tron.SUCCESS,
 			List:    list,
 		},
 	}
@@ -353,7 +486,7 @@ func setAddressJoined(req *http.Request, db *storage.Database,
 			return err
 		}
 		if txs != nil {
-			txs.Status = "2"
+			txs.Status = tron.TXS_ADMIN_CONFIRM
 			err = db.UpdateTxsByHash(ctx, txn, *txs)
 			if err != nil {
 				return err
@@ -367,10 +500,11 @@ func setAddressJoined(req *http.Request, db *storage.Database,
 			JSON: jsonerror.Unknown(" set status  error"),
 		}
 	}
+	fmt.Println("setAddressStatus")
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: SetAddressStatusResp{
-			RetCode: "0",
+			RetCode: tron.SUCCESS,
 			Message: "",
 		},
 	}

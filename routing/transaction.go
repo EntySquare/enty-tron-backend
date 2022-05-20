@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"entysquare/enty-tron-backend/pkg/jsonerror"
+	"entysquare/enty-tron-backend/pkg/tron"
 	"entysquare/enty-tron-backend/pkg/util"
 	"entysquare/enty-tron-backend/storage"
 	"entysquare/enty-tron-backend/storage/sqlutil"
@@ -18,9 +19,6 @@ import (
 var resourceLock = func() sync.Mutex {
 	return sync.Mutex{}
 }()
-
-const tbLimit = 200
-const nftLimit = 200
 
 func insertTransaction(
 	req *http.Request, db *storage.Database,
@@ -51,10 +49,10 @@ func insertTransaction(
 		if err != nil {
 			return err
 		}
-		if reqParams.TransactionType == "1" && tb == tbLimit {
+		if reqParams.TransactionType == tron.TYPE_TB && tb == tron.TBLIMIT {
 			return fmt.Errorf("over limit")
 		}
-		if reqParams.TransactionType == "2" && nft == nftLimit {
+		if reqParams.TransactionType == tron.TYPE_TB && nft == tron.NFTLIMIT {
 			return fmt.Errorf("over limit")
 		}
 		addr, err := db.SelectAddressByAddress(ctx, nil, address)
@@ -71,7 +69,7 @@ func insertTransaction(
 			tx := types.Txs{
 				Hash:            &reqParams.TransactionId,
 				Address:         reqParams.Address,
-				Status:          "0", //未确认
+				Status:          tron.TXS_WAITING_FOR_CHAIN_CONFIRM, //未确认
 				TransactionType: reqParams.TransactionType,
 			}
 			err = db.InsertTxs(ctx, txn, tx)
@@ -82,24 +80,27 @@ func insertTransaction(
 		return nil
 	})
 	if err != nil && strings.Contains(err.Error(), "over limit") {
+		fmt.Println("over limit")
 		return util.JSONResponse{
 			Code: http.StatusOK,
 			JSON: TransactionInsertResp{
-				RetCode: "1",
+				RetCode: tron.OVERLIMIT,
 				Message: "over limit",
 			},
 		}
 	} else if err != nil && !strings.Contains(err.Error(), "over limit") {
+		fmt.Println("limit")
 		return util.JSONResponse{
 			Code: http.StatusForbidden,
 			JSON: jsonerror.NotFound("db select or insert err"),
 		}
 	}
-
+	go tron.ScanTron(db, address, reqParams.TransactionType)
+	fmt.Println(address + " ::::insertTransaction:::: " + reqParams.TransactionId + " :::: " + reqParams.TransactionType)
 	return util.JSONResponse{
 		Code: http.StatusOK,
 		JSON: TransactionInsertResp{
-			RetCode: "0",
+			RetCode: tron.SUCCESS,
 			Message: "",
 		},
 	}

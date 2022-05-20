@@ -27,6 +27,7 @@ type SetAddressStatusResp struct {
 }
 type AddressStatus struct {
 	Address         string `json:"address"`
+	TransactionId   string `json:"transactionId"`
 	TransactionType string `json:"transactionType"`
 	Status          string `json:"status"` // 0 已支付 1 链上已确认 2 管理员已确认
 
@@ -52,4 +53,12 @@ type QueryCoinLimitResp struct {
 	RetCode        string `json:"retCode"`
 	TbHasBeenSold  int64  `json:"tbHasBeenSold"`
 	NftHasBeenSold int64  `json:"nftHasBeenSold"`
+}
+type ReturnLimitReq struct {
+	Address         string `json:"address"`
+	TransactionType string `json:"transactionType"` //交易类型，tb coin 1，nft 2
+}
+type ReturnLimitResp struct {
+	RetCode string `json:"retCode"`
+	Message string `json:"message"`
 }
